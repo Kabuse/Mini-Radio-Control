@@ -911,7 +911,7 @@ class MemoryEditorWindow:
         self.write_all_button.text_color = dark_theme_text_color
 
         # Kleiner Abstand NACH dem Write-Button (vor Statuszeile)
-        Box(main_content_box, height=8, width="fill")
+        Box(main_content_box, height=15, width="fill")
 
         # Statuszeile in eigene untere Box
         self.status_label_box = Box(self.window, align="bottom", width="fill")
