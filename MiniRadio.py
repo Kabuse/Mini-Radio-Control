@@ -868,7 +868,7 @@ class MemoryEditorWindow:
             main_box,
             options=combo_items,
             selected=combo_items[0],
-            width="fill",
+            width=8,
             grid=[0, current_main_row],
             command=self.on_slot_selected,
             align="left"
@@ -882,18 +882,18 @@ class MemoryEditorWindow:
         editor_fields_box.tk.grid_columnconfigure(0, weight=0)
         editor_fields_box.tk.grid_columnconfigure(1, weight=1)
         current_edit_row = 0
-        Text(editor_fields_box, text="Frequency:", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
-        self.freq_entry = TextBox(editor_fields_box, text="", grid=[1,current_edit_row], align="left", width="fill")
+        Text(editor_fields_box, text="Frequency: ", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
+        self.freq_entry = TextBox(editor_fields_box, text="", grid=[1,current_edit_row], align="left", width=90)
         self.freq_entry.bg = dark_theme_combo_bg
         self.freq_entry.text_color = dark_theme_combo_text_color
         current_edit_row+=1
         Text(editor_fields_box, text="Band:", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
-        self.band_entry = Combo(editor_fields_box, options=list(BANDS_DATA.keys()), grid=[1,current_edit_row], align="left", width="fill")
+        self.band_entry = Combo(editor_fields_box, options=list(BANDS_DATA.keys()), grid=[1,current_edit_row], align="left", width=8)
         self.band_entry.bg = dark_theme_combo_bg
         self.band_entry.text_color = dark_theme_combo_text_color
         current_edit_row+=1
         Text(editor_fields_box, text="Mode:", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
-        self.mode_entry = Combo(editor_fields_box, options=["FM","AM","LSB","USB"], grid=[1,current_edit_row], align="left", width="fill")
+        self.mode_entry = Combo(editor_fields_box, options=["FM","AM","LSB","USB"], grid=[1,current_edit_row], align="left", width=8)
         self.mode_entry.bg = dark_theme_combo_bg
         self.mode_entry.text_color = dark_theme_combo_text_color
         current_edit_row+=1
