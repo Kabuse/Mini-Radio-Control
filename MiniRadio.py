@@ -1213,7 +1213,7 @@ class MemoryEditorWindow:
             print(end_line.strip())
         except Exception as e:
             print(f"WriteAll: Error writing end line: {e}")
-        self.status_label.value = f"Wrote {slots_written} slot(s) to radio."
+        self.status_label.value = f"Wrote {slots_written} slot(s) to radio!"
 
     def on_close(self):
         global memory_viewer_window_instance # Renamed
