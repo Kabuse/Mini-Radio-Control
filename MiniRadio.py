@@ -833,7 +833,7 @@ class SpectrumWindow:
 class MemoryEditorWindow:
     def __init__(self, master_app_ref):
         self.master_app = master_app_ref
-        self.window = Window(self.master_app, title="Memory Editor", width=300, height=340)
+        self.window = Window(self.master_app, title="Memory Editor", width=300, height=310)
         self.window.bg = self.master_app.bg 
         self.window.when_closed = self.on_close
         self.window.tk.resizable(False, False)
@@ -842,105 +842,89 @@ class MemoryEditorWindow:
         self.memory_slots_data = {} # Stores {slot_num_int: {"band": "VHF", "freq_hz": 107900000, "mode": "FM"}}
 
         # --- Layout ---
-        # Changed top_controls_box to default (vertical) layout instead of grid
-        top_controls_box = Box(self.window, width="fill", align="top",) 
-        
-        # Button directly in top_controls_box, aligned left
+        # Hauptinhalt in eine vertikale Box
+        main_content_box = Box(self.window, align="top", width="fill", height="fill")
+
+        # Button oben
+        top_controls_box = Box(main_content_box, width="fill", align="top")
         self.load_button = PushButton(
-            top_controls_box, # Parent is top_controls_box
-            text="Load Memories from Radio", 
+            top_controls_box,
+            text="Load Memories from Radio",
             command=self.load_memories,
-            width="fill"  # Match Write Memories to Radio button width
+            width="fill"
         )
         self.load_button.bg = dark_theme_button_bg
         self.load_button.text_color = dark_theme_text_color
+        Box(top_controls_box, height=10, width="fill")
 
-        # Spacer between button and status_label
-        Box(top_controls_box, height=5, width="fill")
-        # Status label, will be below the spacer
-        self.status_label = Text(top_controls_box, text="Load memories to view.", align="left", width="fill")
-        self.status_label.text_color = dark_theme_text_color
-
-        # Another Leerzeile (Spacer) directly under the status_label
-        Box(top_controls_box, height=5, width="fill") # Small spacer
-        
-        # Spacer
-        Box(self.window, width="fill", height=10, align="top") # Vertical spacer
-
-        main_box = Box(self.window, layout="grid", width="fill", height="fill", align="top")
-        # Configure column weights for main_box:
-        # Single column that spans the full width for stacked elements
+        # Hauptbereich für Felder und Write-Button
+        main_box = Box(main_content_box, layout="grid", width="fill", height="fill", align="top")
         main_box.tk.grid_columnconfigure(0, weight=1)
-
         current_main_row = 0
-
-        # Label for memory slot selection
         Text(main_box, text="Memory Slots (01-32):", grid=[0, current_main_row], align="left", width="fill").text_color = dark_theme_text_color
         current_main_row += 1
-        
-        # Combo for memory slot selection, now on its own line
         combo_items = [f"Slot {i:02d}" for i in range(1, 33)]
         self.slot_selector_combo = Combo(
-            main_box, 
+            main_box,
             options=combo_items,
-            selected=combo_items[0], # Default to Slot 01
-            width="fill", # Fill available width
-            grid=[0, current_main_row], # Dropdown in column 0, on the next line
+            selected=combo_items[0],
+            width="fill",
+            grid=[0, current_main_row],
             command=self.on_slot_selected,
             align="left"
         )
         self.slot_selector_combo.bg = dark_theme_combo_bg
         self.slot_selector_combo.text_color = dark_theme_combo_text_color
         current_main_row += 1
-
-        Box(main_box, grid=[0, current_main_row], height=10, width="fill") # Spacer, spans 1 column
-        current_main_row += 1 
-
-        editor_fields_box = Box(main_box, layout="grid", grid=[0, current_main_row], align="left", width="fill") # Below spacer, spans 1 column
-        # Configure column weights for editor_fields_box for stability
-        editor_fields_box.tk.grid_columnconfigure(0, weight=0)  # Column for labels (fixed width)
-        editor_fields_box.tk.grid_columnconfigure(1, weight=1)  # Column for values (fills remaining space)
-        
+        Box(main_box, grid=[0, current_main_row], height=8, width="fill") # Kleiner Spacer
+        current_main_row += 1
+        editor_fields_box = Box(main_box, layout="grid", grid=[0, current_main_row], align="left", width="fill")
+        editor_fields_box.tk.grid_columnconfigure(0, weight=0)
+        editor_fields_box.tk.grid_columnconfigure(1, weight=1)
         current_edit_row = 0
-        Text(editor_fields_box, text="Selected Slot:    ", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
-        self.selected_slot_text = Text(editor_fields_box, text="--", grid=[1,current_edit_row], align="left", width="fill") # align="left" hinzugefügt
-        self.selected_slot_text.text_color = dark_theme_text_color
-        current_edit_row+=1
-
-        # Editierbare Felder
         Text(editor_fields_box, text="Frequency:", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
         self.freq_entry = TextBox(editor_fields_box, text="", grid=[1,current_edit_row], align="left", width="fill")
         self.freq_entry.bg = dark_theme_combo_bg
         self.freq_entry.text_color = dark_theme_combo_text_color
         current_edit_row+=1
-
         Text(editor_fields_box, text="Band:", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
         self.band_entry = Combo(editor_fields_box, options=list(BANDS_DATA.keys()), grid=[1,current_edit_row], align="left", width="fill")
         self.band_entry.bg = dark_theme_combo_bg
         self.band_entry.text_color = dark_theme_combo_text_color
         current_edit_row+=1
-
         Text(editor_fields_box, text="Mode:", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
         self.mode_entry = Combo(editor_fields_box, options=["FM","AM","LSB","USB"], grid=[1,current_edit_row], align="left", width="fill")
         self.mode_entry.bg = dark_theme_combo_bg
         self.mode_entry.text_color = dark_theme_combo_text_color
         current_edit_row+=1
 
-        # Write All Button ganz unten, volle Breite
-        Box(self.window, height=8, width="fill") # Abstand
+        # Minimaler Abstand vor Write-Button
+        Box(main_content_box, height=8, width="fill")
         self.write_all_button = PushButton(
-            self.window,
+            main_content_box,
             text="Write Memories to Radio",
             command=self.write_all_slots,
             width="fill",
-            align="bottom"
+            align="top"
         )
         self.write_all_button.bg = dark_theme_button_bg
         self.write_all_button.text_color = dark_theme_text_color
 
+        # Kleiner Abstand NACH dem Write-Button (vor Statuszeile)
+        Box(main_content_box, height=8, width="fill")
+
+        # Statuszeile in eigene untere Box
+        self.status_label_box = Box(self.window, align="bottom", width="fill")
+        self.status_label = Text(self.status_label_box, text="Load memories to view.", align="bottom", width="fill")
+        self.status_label.text_color = dark_theme_text_color
+        Box(self.status_label_box, height=6, width="fill", align="bottom")
+
         # Initial selection to trigger on_slot_selected and populate fields for Slot 01
         self.last_selected_slot = None
         self.on_slot_selected(self.slot_selector_combo.value)
+
+        # Fensterhöhe ggf. anpassen
+        self.window.height = 310
 
     def load_memories(self):
         if not (ser and ser.is_open):
@@ -1057,7 +1041,6 @@ class MemoryEditorWindow:
         try:
             slot_num_str = selected_value.replace("Slot", "").strip()
             slot_num = int(slot_num_str)
-            self.selected_slot_text.value = f"{slot_num:02d}"
             self.last_selected_slot = slot_num
 
             # Felder setzen
@@ -1084,7 +1067,6 @@ class MemoryEditorWindow:
         except Exception as e:
             print(f"Error in on_slot_selected: {e} (Selected: '{selected_value}')")
             self.status_label.value = "Error selecting slot."
-            self.selected_slot_text.value = "--"
             self.freq_entry.value = ""
             self.band_entry.value = "VHF"
             self.mode_entry.value = "FM"
@@ -1213,7 +1195,7 @@ class MemoryEditorWindow:
             print(end_line.strip())
         except Exception as e:
             print(f"WriteAll: Error writing end line: {e}")
-        self.status_label.value = f"Wrote {slots_written} slot(s) to radio!"
+        self.status_label.value = f"Wrote {slots_written} slot(s) to radio."
 
     def on_close(self):
         global memory_viewer_window_instance # Renamed
