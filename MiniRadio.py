@@ -850,7 +850,7 @@ class MemoryEditorWindow:
             top_controls_box, # Parent is top_controls_box
             text="Load Memories from Radio", 
             command=self.load_memories,
-            width="20"  # Make the button take the full width
+            width="fill"  # Match Write Memories to Radio button width
         )
         self.load_button.bg = dark_theme_button_bg
         self.load_button.text_color = dark_theme_text_color
@@ -930,7 +930,7 @@ class MemoryEditorWindow:
         Box(self.window, height=8, width="fill") # Abstand
         self.write_all_button = PushButton(
             self.window,
-            text="Write All",
+            text="Write Memories to Radio",
             command=self.write_all_slots,
             width="fill",
             align="bottom"
