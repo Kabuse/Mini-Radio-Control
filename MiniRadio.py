@@ -830,13 +830,13 @@ class SpectrumWindow:
         self.window.destroy()
 
 # --- Memory Viewer Window ---
-class MemoryViewerWindow:
+class MemoryEditorWindow:
     def __init__(self, master_app_ref):
         self.master_app = master_app_ref
-        self.window = Window(self.master_app, title="Memory Viewer", width=245, height=245) # Adjusted title and height
+        self.window = Window(self.master_app, title="Memory Editor", width=300, height=340)
         self.window.bg = self.master_app.bg 
         self.window.when_closed = self.on_close
-        self.window.tk.resizable(False, False) # Make the MemoryViewerWindow not resizable
+        self.window.tk.resizable(False, False)
         self.window.tk.config(padx=12, pady=12)
 
         self.memory_slots_data = {} # Stores {slot_num_int: {"band": "VHF", "freq_hz": 107900000, "mode": "FM"}}
@@ -907,23 +907,39 @@ class MemoryViewerWindow:
         self.selected_slot_text.text_color = dark_theme_text_color
         current_edit_row+=1
 
-        # Display fields
+        # Editierbare Felder
         Text(editor_fields_box, text="Frequency:", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
-        self.freq_display = Text(editor_fields_box, text="---", grid=[1,current_edit_row], align="left", width="fill") # Now in column 1
-        self.freq_display.text_color = dark_theme_text_color
+        self.freq_entry = TextBox(editor_fields_box, text="", grid=[1,current_edit_row], align="left", width="fill")
+        self.freq_entry.bg = dark_theme_combo_bg
+        self.freq_entry.text_color = dark_theme_combo_text_color
         current_edit_row+=1
 
         Text(editor_fields_box, text="Band:", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
-        self.band_display = Text(editor_fields_box, text="---", grid=[1,current_edit_row], align="left", width="fill") # Now in column 1
-        self.band_display.text_color = dark_theme_text_color
+        self.band_entry = Combo(editor_fields_box, options=list(BANDS_DATA.keys()), grid=[1,current_edit_row], align="left", width="fill")
+        self.band_entry.bg = dark_theme_combo_bg
+        self.band_entry.text_color = dark_theme_combo_text_color
         current_edit_row+=1
 
         Text(editor_fields_box, text="Mode:", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
-        self.mode_display = Text(editor_fields_box, text="---", grid=[1,current_edit_row], align="left", width="fill") # align="left" hinzugefügt
-        self.mode_display.text_color = dark_theme_text_color
+        self.mode_entry = Combo(editor_fields_box, options=["FM","AM","LSB","USB"], grid=[1,current_edit_row], align="left", width="fill")
+        self.mode_entry.bg = dark_theme_combo_bg
+        self.mode_entry.text_color = dark_theme_combo_text_color
         current_edit_row+=1
 
+        # Write All Button ganz unten, volle Breite
+        Box(self.window, height=8, width="fill") # Abstand
+        self.write_all_button = PushButton(
+            self.window,
+            text="Write All",
+            command=self.write_all_slots,
+            width="fill",
+            align="bottom"
+        )
+        self.write_all_button.bg = dark_theme_button_bg
+        self.write_all_button.text_color = dark_theme_text_color
+
         # Initial selection to trigger on_slot_selected and populate fields for Slot 01
+        self.last_selected_slot = None
         self.on_slot_selected(self.slot_selector_combo.value)
 
     def load_memories(self):
@@ -1031,41 +1047,173 @@ class MemoryViewerWindow:
              self.status_label.value = "All Memory Slots are empty!"
 
     def on_slot_selected(self, selected_value):
-        if not selected_value: return
+        if not selected_value:
+            return
+
+        # Vorherigen Slot speichern, falls vorhanden
+        if self.last_selected_slot is not None:
+            self.save_current_slot_to_memory(self.last_selected_slot)
 
         try:
-            # Parse slot number from listbox string "Slot XX: ..."
-            slot_num_str = selected_value.replace("Slot", "").strip() # Combo value is "Slot XX"
+            slot_num_str = selected_value.replace("Slot", "").strip()
             slot_num = int(slot_num_str)
-            self.selected_slot_text.value = f"{slot_num:02d}" 
+            self.selected_slot_text.value = f"{slot_num:02d}"
+            self.last_selected_slot = slot_num
 
-            if slot_num in self.memory_slots_data:
-                data = self.memory_slots_data[slot_num]
-                # Format frequency for editing field
-                mode = data["mode"]
-                freq_hz = data['freq_hz']
-                if mode == "FM": # Show in MHz for FM
-                    self.freq_display.value = f"{freq_hz / 1000000.0:.2f} MHz" # Consistent: 2 decimal places
-                elif mode in ["LSB", "USB"]: # Show in kHz for SSB
-                    self.freq_display.value = f"{data['freq_hz'] / 1000.0:.1f} kHz"
-                else:  # Show in kHz for AM and other SW modes (integer)
-                    self.freq_display.value = f"{data['freq_hz'] / 1000.0:.0f} kHz" # Consistent: 0 decimal places
-                
-                self.band_display.value = data["band"]
-                self.mode_display.value = data["mode"]
+            # Felder setzen
+            data = self.memory_slots_data.get(slot_num, None)
+            if data:
+                freq_hz = data.get("freq_hz", 0)
+                mode = data.get("mode", "FM")
+                band = data.get("band", "VHF")
+                # Frequenz als editierbaren Wert anzeigen:
+                # VHF als MHz mit 1 Nachkommastelle und 'M', sonst als kHz mit 1 Nachkommastelle und 'k'
+                if band == "VHF":
+                    freq_disp = f"{freq_hz/1_000_000:.1f}M" if freq_hz else ""
+                else:
+                    freq_disp = f"{freq_hz/1_000:.1f}k" if freq_hz else ""
+                self.freq_entry.value = freq_disp
+                self.band_entry.value = band
+                self.mode_entry.value = mode
                 self.status_label.value = f"Viewing Slot {slot_num:02d}."
-            else: 
-                self.freq_display.value = "---"
-                self.band_display.value = "---"
-                self.mode_display.value = "---"
+            else:
+                self.freq_entry.value = ""
+                self.band_entry.value = "VHF"
+                self.mode_entry.value = "FM"
                 self.status_label.value = f"Slot {slot_num:02d} is empty."
         except Exception as e:
             print(f"Error in on_slot_selected: {e} (Selected: '{selected_value}')")
             self.status_label.value = "Error selecting slot."
             self.selected_slot_text.value = "--"
-            self.freq_display.value = "---"
-            self.band_display.value = "---"
-            self.mode_display.value = "---"
+            self.freq_entry.value = ""
+            self.band_entry.value = "VHF"
+            self.mode_entry.value = "FM"
+
+    def save_current_slot_to_memory(self, slot_num):
+        """Speichert die aktuellen Editierfelder in den Speicherarray. Akzeptiert Hz, k, M/m, MHz, khz, etc."""
+        try:
+            freq_str = self.freq_entry.value.strip().lower().replace(' ','')
+            band = self.band_entry.value.strip()
+            mode = self.mode_entry.value.strip()
+            if not freq_str or not band or not mode:
+                # Leerer Slot, nicht speichern
+                return
+            # Umwandlung: 102.3M, 7100k, 1840k, 1.84m, 7000000, 3500000, 3500k, 3.5m, etc.
+            freq_hz = self._parse_freq_to_hz(freq_str)
+            if freq_hz is None:
+                print(f"Error in save_current_slot_to_memory: invalid frequency '{freq_str}'")
+                return
+            if freq_hz == 0:
+                # Slot löschen
+                if slot_num in self.memory_slots_data:
+                    del self.memory_slots_data[slot_num]
+                return
+            # Speichern/Überschreiben
+            self.memory_slots_data[slot_num] = {"band": band, "freq_hz": freq_hz, "mode": mode}
+        except Exception as e:
+            print(f"Error in save_current_slot_to_memory: {e}")
+
+    def _parse_freq_to_hz(self, freq_str):
+        """
+        Robustly parse frequency strings like 102.3M, 7100k, 1840k, 1.84m, 7000000, 3500000, 3500k, 3.5m, 7880k, 7880,5k, 7.88 MHz, etc. to Hz.
+        Accepts case-insensitive units (m, mhz, k, khz, hz), optional whitespace, dot or comma as decimal, and flexible order.
+        """
+        import re
+        try:
+            s = freq_str.strip().replace(' ','').replace(',','.')
+            s = s.lower()
+            # Regex: number (int/float) + optional unit (m, mhz, k, khz, hz)
+            match = re.match(r'^([0-9]+\.?[0-9]*)\s*(m|mhz|k|khz|hz)?$', s)
+            if match:
+                value = float(match.group(1))
+                unit = match.group(2) or ''
+                if unit in ['m', 'mhz']:
+                    return int(value * 1_000_000)
+                elif unit in ['k', 'khz']:
+                    return int(value * 1_000)
+                elif unit == 'hz':
+                    return int(value)
+                else:
+                    # No unit: guess based on value
+                    if value > 1_000_000:  # Looks like Hz
+                        return int(value)
+                    elif value > 10_000:   # Looks like kHz
+                        return int(value * 1)
+                    elif value > 1000:     # Could be kHz
+                        return int(value * 1)
+                    elif value > 100:      # Could be MHz (e.g. 102.3)
+                        return int(value * 1_000_000)
+                    else:                  # e.g. 7.1 (MHz)
+                        return int(value * 1_000_000)
+            # Try to extract number and unit with more flexible regex (e.g. 7.88MHz, 7880kHz, 7880k, 7880,5k)
+            match2 = re.match(r'^([0-9]+[\.,]?[0-9]*)\s*([a-zA-Z]+)?$', freq_str.strip().replace(' ','').replace(',','.'))
+            if match2:
+                value = float(match2.group(1))
+                unit = (match2.group(2) or '').lower()
+                if unit in ['m', 'mhz']:
+                    return int(value * 1_000_000)
+                elif unit in ['k', 'khz']:
+                    return int(value * 1_000)
+                elif unit == 'hz':
+                    return int(value)
+                elif unit == '':
+                    # No unit: guess
+                    if value > 1_000_000:
+                        return int(value)
+                    elif value > 10_000:
+                        return int(value * 1)
+                    elif value > 1000:
+                        return int(value * 1)
+                    elif value > 100:
+                        return int(value * 1_000_000)
+                    else:
+                        return int(value * 1_000_000)
+            # Fallback: try to parse as float (Hz)
+            return int(float(s))
+        except Exception as e:
+            print(f"Error in _parse_freq_to_hz: {e} (input: '{freq_str}')")
+        return None
+
+    def write_all_slots(self):
+        """Sendet immer 32 Slots im Batch ans Radio, leere als #NN,ALL,0,AM."""
+        if not (ser and ser.is_open):
+            self.status_label.value = "Error: Radio not connected."
+            print("WARN: Write All: Radio not connected.")
+            return
+        # Vorherigen Slot speichern
+        if self.last_selected_slot is not None:
+            self.save_current_slot_to_memory(self.last_selected_slot)
+        import time
+        self.status_label.value = "Writing all slots..."
+        slots_written = 0
+        for slot_num in range(1, 33):
+            data = self.memory_slots_data.get(slot_num)
+            if data:
+                band = data.get('band', 'ALL')
+                freq_hz = data.get('freq_hz', 0)
+                mode = data.get('mode', 'AM')
+            else:
+                band = 'ALL'
+                freq_hz = 0
+                mode = 'AM'
+            try:
+                line = f"#{slot_num:02d},{band},{freq_hz},{mode}\r\n"
+                ser.write(line.encode('ascii'))
+                ser.flush()
+                print(f"WriteAll: {line.strip()}")
+                slots_written += 1
+                time.sleep(0.03)  # 30 ms Pause nach jeder Zeile
+            except Exception as e:
+                print(f"WriteAll: Error writing slot {slot_num}: {e}")
+        # Abschlusszeile wie im Webtool
+        try:
+            end_line = "--- All slots sent ---\r\n"
+            ser.write(end_line.encode('ascii'))
+            ser.flush()
+            print(end_line.strip())
+        except Exception as e:
+            print(f"WriteAll: Error writing end line: {e}")
+        self.status_label.value = f"Wrote {slots_written} slot(s) to radio."
 
     def on_close(self):
         global memory_viewer_window_instance # Renamed
@@ -1147,35 +1295,33 @@ action_buttons_box = Box(app, layout="grid", grid=[0, current_grid_row, 3, 1], w
 action_buttons_box.tk.columnconfigure(0, weight=1)  # First button's column
 action_buttons_box.tk.columnconfigure(1, weight=1)  # Second button's column
 
-def open_memory_viewer_window(): # Renamed
-    global memory_viewer_window_instance # Renamed
+def open_memory_editor_window():
+    global memory_viewer_window_instance
     if not (ser and ser.is_open):
-        print("WARN: Memory Viewer button pressed but not connected to radio.") # Adjusted text
+        print("WARN: Memory Editor button pressed but not connected to radio.")
         if hasattr(app, 'connect_button'):
             app.connect_button.text = "Not\nconnected!"
-            app.connect_button.text_color = "#FFA726" # Orange warning color
+            app.connect_button.text_color = "#FFA726"
         return
-    if memory_viewer_window_instance is not None and memory_viewer_window_instance.window.tk.winfo_exists(): # Renamed
-        # User requested no app.info
-        # print("INFO: Memory Viewer window is already open.")
+    if memory_viewer_window_instance is not None and memory_viewer_window_instance.window.tk.winfo_exists():
         try:
-            memory_viewer_window_instance.window.tk.focus_force() # Renamed
-            memory_viewer_window_instance.window.tk.lift() # Renamed
+            memory_viewer_window_instance.window.tk.focus_force()
+            memory_viewer_window_instance.window.tk.lift()
         except Exception as e:
-            print(f"Could not focus/lift memory viewer window: {e}") # Adjusted text
+            print(f"Could not focus/lift memory editor window: {e}")
         return
-    memory_viewer_window_instance = MemoryViewerWindow(app) # Renamed
+    memory_viewer_window_instance = MemoryEditorWindow(app)
 
 memory_viewer_button = PushButton(
-    action_buttons_box, # Parent is the new box
-    text="Open Memory Viewer",
-    command=open_memory_viewer_window,
-    grid=[0, 0], # Column 0, Row 0 within action_buttons_box
+    action_buttons_box,
+    text="Open Memory Editor",
+    command=open_memory_editor_window,
+    grid=[0, 0],
     width="21"
 )
 memory_viewer_button.bg = dark_theme_button_bg
 memory_viewer_button.text_color = dark_theme_text_color
-memory_viewer_button.tk.config(relief="raised", borderwidth=2) # Example: raised border with width 2
+memory_viewer_button.tk.config(relief="raised", borderwidth=2)
 
 def open_spectrum_analyzer_window():
     global spectrum_window_instance, current_radio_band_name, current_radio_frequency_khz, current_radio_step_size_str, current_radio_mode_str
