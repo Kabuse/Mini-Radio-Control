@@ -833,19 +833,16 @@ class SpectrumWindow:
 class MemoryEditorWindow:
     def __init__(self, master_app_ref):
         self.master_app = master_app_ref
-        self.window = Window(self.master_app, title="Memory Editor", width=300, height=310)
+        self.window = Window(self.master_app, title="Memory Editor", width=370, height=330)
         self.window.bg = self.master_app.bg 
         self.window.when_closed = self.on_close
         self.window.tk.resizable(False, False)
-        self.window.tk.config(padx=12, pady=12)
+        self.window.tk.config(padx=16, pady=16)
 
-        self.memory_slots_data = {} # Stores {slot_num_int: {"band": "VHF", "freq_hz": 107900000, "mode": "FM"}}
+        self.memory_slots_data = {}
+        self.max_slots = 99
 
-        # --- Layout ---
-        # Hauptinhalt in eine vertikale Box
         main_content_box = Box(self.window, align="top", width="fill", height="fill")
-
-        # Button oben
         top_controls_box = Box(main_content_box, width="fill", align="top")
         self.load_button = PushButton(
             top_controls_box,
@@ -855,51 +852,61 @@ class MemoryEditorWindow:
         )
         self.load_button.bg = dark_theme_button_bg
         self.load_button.text_color = dark_theme_text_color
-        Box(top_controls_box, height=10, width="fill")
+        Box(top_controls_box, height=15, width="fill")
 
-        # Hauptbereich für Felder und Write-Button
         main_box = Box(main_content_box, layout="grid", width="fill", height="fill", align="top")
         main_box.tk.grid_columnconfigure(0, weight=1)
         current_main_row = 0
-        Text(main_box, text="Memory Slots (01-32):", grid=[0, current_main_row], align="left", width="fill").text_color = dark_theme_text_color
-        current_main_row += 1
-        combo_items = [f"Slot {i:02d}" for i in range(1, 33)]
-        self.slot_selector_combo = Combo(
-            main_box,
-            options=combo_items,
-            selected=combo_items[0],
-            width=8,
-            grid=[0, current_main_row],
-            command=self.on_slot_selected,
-            align="left"
+
+        # Slot selection row: small input, spacing, OK button to far right
+        slot_row_box = Box(main_box, layout="grid", grid=[0, current_main_row], align="left", width="fill")
+        slot_row_box.tk.grid_columnconfigure(0, weight=0)
+        slot_row_box.tk.grid_columnconfigure(1, weight=0)
+        slot_row_box.tk.grid_columnconfigure(2, weight=1)
+        slot_row_box.tk.grid_columnconfigure(3, weight=0)
+        Text(slot_row_box, text="Slot (1-99):", grid=[0,0], align="left", width=12).text_color = dark_theme_text_color
+        self.slot_input = TextBox(slot_row_box, text="1", grid=[1,0], width=4, align="left")
+        self.slot_input.bg = dark_theme_combo_bg
+        self.slot_input.text_color = dark_theme_combo_text_color
+        Box(slot_row_box, width=15, grid=[2,0])  # Abstand zwischen Eingabe und OK
+        self.slot_confirm_btn = PushButton(
+            slot_row_box,
+            text="OK",
+            grid=[3,0],
+            command=self.confirm_slot_input,
+            width=15,
+            align="right"
         )
-        self.slot_selector_combo.bg = dark_theme_combo_bg
-        self.slot_selector_combo.text_color = dark_theme_combo_text_color
+        self.slot_confirm_btn.bg = dark_theme_button_bg
+        self.slot_confirm_btn.text_color = dark_theme_text_color
         current_main_row += 1
-        Box(main_box, grid=[0, current_main_row], height=8, width="fill") # Kleiner Spacer
+
+        Box(main_box, grid=[0, current_main_row], height=6, width="fill")
         current_main_row += 1
+
+        # Edit fields (Frequency, Band, Mode all same width)
         editor_fields_box = Box(main_box, layout="grid", grid=[0, current_main_row], align="left", width="fill")
         editor_fields_box.tk.grid_columnconfigure(0, weight=0)
         editor_fields_box.tk.grid_columnconfigure(1, weight=1)
+        field_width = 22
         current_edit_row = 0
-        Text(editor_fields_box, text="Frequency: ", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
-        self.freq_entry = TextBox(editor_fields_box, text="", grid=[1,current_edit_row], align="left", width=90)
+        Text(editor_fields_box, text="Frequency:", grid=[0,current_edit_row], align="left", width=12).text_color = dark_theme_text_color
+        self.freq_entry = TextBox(editor_fields_box, text="", grid=[1,current_edit_row], align="center", width=24)
         self.freq_entry.bg = dark_theme_combo_bg
         self.freq_entry.text_color = dark_theme_combo_text_color
         current_edit_row+=1
-        Text(editor_fields_box, text="Band:", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
-        self.band_entry = Combo(editor_fields_box, options=list(BANDS_DATA.keys()), grid=[1,current_edit_row], align="left", width=8)
+        Text(editor_fields_box, text="Band:", grid=[0,current_edit_row], align="left", width=12).text_color = dark_theme_text_color
+        self.band_entry = Combo(editor_fields_box, options=list(BANDS_DATA.keys()), grid=[1,current_edit_row], align="left", width=20)
         self.band_entry.bg = dark_theme_combo_bg
         self.band_entry.text_color = dark_theme_combo_text_color
         current_edit_row+=1
-        Text(editor_fields_box, text="Mode:", grid=[0,current_edit_row], align="left", width="fill").text_color = dark_theme_text_color
-        self.mode_entry = Combo(editor_fields_box, options=["FM","AM","LSB","USB"], grid=[1,current_edit_row], align="left", width=8)
+        Text(editor_fields_box, text="Mode:", grid=[0,current_edit_row], align="left", width=12).text_color = dark_theme_text_color
+        self.mode_entry = Combo(editor_fields_box, options=["FM","AM","LSB","USB"], grid=[1,current_edit_row], align="left", width=20)
         self.mode_entry.bg = dark_theme_combo_bg
         self.mode_entry.text_color = dark_theme_combo_text_color
         current_edit_row+=1
 
-        # Minimaler Abstand vor Write-Button
-        Box(main_content_box, height=8, width="fill")
+        Box(main_content_box, height=10, width="fill")
         self.write_all_button = PushButton(
             main_content_box,
             text="Write Memories to Radio",
@@ -910,21 +917,50 @@ class MemoryEditorWindow:
         self.write_all_button.bg = dark_theme_button_bg
         self.write_all_button.text_color = dark_theme_text_color
 
-        # Kleiner Abstand NACH dem Write-Button (vor Statuszeile)
-        Box(main_content_box, height=15, width="fill")
-
-        # Statuszeile in eigene untere Box
+        Box(main_content_box, height=10, width="fill")
         self.status_label_box = Box(self.window, align="bottom", width="fill")
         self.status_label = Text(self.status_label_box, text="Load memories to view.", align="bottom", width="fill")
         self.status_label.text_color = dark_theme_text_color
-        Box(self.status_label_box, height=6, width="fill", align="bottom")
+        Box(self.status_label_box, height=4, width="fill", align="bottom")
 
-        # Initial selection to trigger on_slot_selected and populate fields for Slot 01
         self.last_selected_slot = None
-        self.on_slot_selected(self.slot_selector_combo.value)
+        self.select_slot(1)
+        self.window.height = 320
 
-        # Fensterhöhe ggf. anpassen
-        self.window.height = 310
+    def confirm_slot_input(self):
+        try:
+            slot_num = int(self.slot_input.value)
+            max_slot = 99
+            if slot_num < 1 or slot_num > max_slot:
+                self.status_label.value = f"Slot must be 1-{max_slot}!"
+                return
+            self.select_slot(slot_num)
+        except Exception:
+            self.status_label.value = "Invalid slot number!"
+
+    def select_slot(self, slot_num):
+        # Save previous slot
+        if self.last_selected_slot is not None:
+            self.save_current_slot_to_memory(self.last_selected_slot)
+        self.last_selected_slot = slot_num
+        data = self.memory_slots_data.get(slot_num, None)
+        if data:
+            freq_hz = data.get("freq_hz", 0)
+            mode = data.get("mode", "FM")
+            band = data.get("band", "VHF")
+            if band == "VHF":
+                freq_disp = f"{freq_hz/1_000_000:.1f}M" if freq_hz else ""
+            else:
+                freq_disp = f"{freq_hz/1_000:.1f}k" if freq_hz else ""
+            self.freq_entry.value = freq_disp
+            self.band_entry.value = band
+            self.mode_entry.value = mode
+            self.status_label.value = f"Viewing Slot {slot_num:02d}."
+        else:
+            self.freq_entry.value = ""
+            self.band_entry.value = "VHF"
+            self.mode_entry.value = "FM"
+            self.status_label.value = f"Slot {slot_num:02d} is empty."
 
     def load_memories(self):
         if not (ser and ser.is_open):
@@ -948,8 +984,8 @@ class MemoryEditorWindow:
 
         lines_processed_count = 0
         
-        # Expect up to 32 lines for the memory slots
-        for i in range(32): # Iterate 32 times, once for each potential slot
+        # Expect up to 99 lines for the memory slots
+        for i in range(99): # Iterate 99 times, once for each potential slot
             try:
                 line_bytes = ser.readline()
                 if not line_bytes: # Timeout, no more data for this slot or end of transmission
@@ -977,7 +1013,7 @@ class MemoryEditorWindow:
                         freq_hz = int(parts[2].strip())
                         mode = parts[3].strip()
 
-                        if 1 <= slot_num <= 32:
+                        if 1 <= slot_num <= 99:
                             if freq_hz != 0 and band: # Freq 0 or empty band means empty slot
                                 self.memory_slots_data[slot_num] = {"band": band, "freq_hz": freq_hz, "mode": mode}
                                 lines_processed_count +=1
@@ -1019,9 +1055,8 @@ class MemoryEditorWindow:
         
         ser.timeout = original_timeout # Restore original timeout
         
-        # After loading, re-select the current combo value to refresh editor fields
-        current_selection = self.slot_selector_combo.value
-        self.on_slot_selected(current_selection) # This will update status and fields
+        # Nach dem Laden: Slot 1 anzeigen
+        self.select_slot(1)
 
         if lines_processed_count > 0:
             self.status_label.value = f"Loaded {lines_processed_count} Memory slot(s)!"
@@ -1031,45 +1066,8 @@ class MemoryEditorWindow:
              self.status_label.value = "All Memory Slots are empty!"
 
     def on_slot_selected(self, selected_value):
-        if not selected_value:
-            return
-
-        # Vorherigen Slot speichern, falls vorhanden
-        if self.last_selected_slot is not None:
-            self.save_current_slot_to_memory(self.last_selected_slot)
-
-        try:
-            slot_num_str = selected_value.replace("Slot", "").strip()
-            slot_num = int(slot_num_str)
-            self.last_selected_slot = slot_num
-
-            # Felder setzen
-            data = self.memory_slots_data.get(slot_num, None)
-            if data:
-                freq_hz = data.get("freq_hz", 0)
-                mode = data.get("mode", "FM")
-                band = data.get("band", "VHF")
-                # Frequenz als editierbaren Wert anzeigen:
-                # VHF als MHz mit 1 Nachkommastelle und 'M', sonst als kHz mit 1 Nachkommastelle und 'k'
-                if band == "VHF":
-                    freq_disp = f"{freq_hz/1_000_000:.1f}M" if freq_hz else ""
-                else:
-                    freq_disp = f"{freq_hz/1_000:.1f}k" if freq_hz else ""
-                self.freq_entry.value = freq_disp
-                self.band_entry.value = band
-                self.mode_entry.value = mode
-                self.status_label.value = f"Viewing Slot {slot_num:02d}."
-            else:
-                self.freq_entry.value = ""
-                self.band_entry.value = "VHF"
-                self.mode_entry.value = "FM"
-                self.status_label.value = f"Slot {slot_num:02d} is empty."
-        except Exception as e:
-            print(f"Error in on_slot_selected: {e} (Selected: '{selected_value}')")
-            self.status_label.value = "Error selecting slot."
-            self.freq_entry.value = ""
-            self.band_entry.value = "VHF"
-            self.mode_entry.value = "FM"
+        # Nicht mehr benötigt, da keine Combo/ListBox mehr
+        pass
 
     def save_current_slot_to_memory(self, slot_num):
         """Speichert die aktuellen Editierfelder in den Speicherarray. Akzeptiert Hz, k, M/m, MHz, khz, etc."""
@@ -1157,7 +1155,7 @@ class MemoryEditorWindow:
         return None
 
     def write_all_slots(self):
-        """Sendet immer 32 Slots im Batch ans Radio, leere als #NN,ALL,0,AM."""
+        """Sendet alle Slots im Batch ans Radio, leere als #NN,ALL,0,AM. Anzahl Slots = self.max_slots."""
         if not (ser and ser.is_open):
             self.status_label.value = "Error: Radio not connected."
             print("WARN: Write All: Radio not connected.")
@@ -1168,7 +1166,7 @@ class MemoryEditorWindow:
         import time
         self.status_label.value = "Writing all slots..."
         slots_written = 0
-        for slot_num in range(1, 33):
+        for slot_num in range(1, self.max_slots + 1):
             data = self.memory_slots_data.get(slot_num)
             if data:
                 band = data.get('band', 'ALL')
@@ -1195,7 +1193,7 @@ class MemoryEditorWindow:
             print(end_line.strip())
         except Exception as e:
             print(f"WriteAll: Error writing end line: {e}")
-        self.status_label.value = f"Wrote {slots_written} slot(s) to radio."
+        self.status_label.value = f"Wrote {self.max_slots} slot(s) to radio."
 
     def on_close(self):
         global memory_viewer_window_instance # Renamed
@@ -1342,6 +1340,8 @@ def open_spectrum_analyzer_window():
             # display_band_name_for_spectrum remains "15M" for consistency
 
         selected_band_info = BANDS_DATA.get(band_data_key)
+        
+       
         
         if not selected_band_info:
             # Fallback: try to find a band that contains the current frequency
