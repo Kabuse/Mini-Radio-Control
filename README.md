@@ -37,12 +37,12 @@ This Python application provides a graphical user interface (GUI) to control an 
     * A checkbox allows users to enable or disable the continuous polling of status information from the radio.
 * **Memory Editor (Enhanced):**
     * Opens in a separate window.
-    * **Edit, view, and batch-write** all 32 memory slots.
+    * **Edit, view, and batch-write** all 99 memory slots.
     * **Robust frequency input:** Accepts flexible formats like `102.3M`, `7100k`, `1.84m`, `7000000`, `3.5m`, `7880,5k`, etc.
         * Case-insensitive units (M, MHz, k, kHz, Hz) are supported.
         * Both dot and comma are accepted as decimal separators.
         * Flexible input order for components.
-    * "Load Memories from Radio" button fetches and displays stored memory channels (01-32).
+    * "Load Memories from Radio" button fetches and displays stored memory channels (01-99).
     * Intelligently parses memory data, accommodating different formats (3-part or 4-part lines).
     * **All memory slots are always written in a single batch** (empty slots are sent as placeholders).
 
